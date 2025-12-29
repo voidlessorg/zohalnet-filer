@@ -1,31 +1,34 @@
 name: Fetch Xray Config
 
+# اجرای دستی و زمان‌بندی ۳۰ دقیقه
 on:
-  workflow_dispatch:   # اجرای دستی
+  workflow_dispatch:   # برای اجرای دستی
   schedule:
-    - cron: "*/30 * * * *"  # هر ۳۰ دقیقه اتومات
+    - cron: "*/30 * * * *"  # هر ۳۰ دقیقه
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
+      # مرحله ۱: دانلود کانفیگ از لینک Raw
       - name: Download Xray Config
         run: |
           curl -s "https://raw.githubusercontent.com/MahsaNetConfigTopic/config/refs/heads/main/xray_final.txt" -o config.txt
 
-      - name: Send Config to Telegram with Reason
+      # مرحله ۲: ارسال به تلگرام به صورت فایل با دلیل و زمان بعدی
+      - name: Send Config to Telegram with Reason and Next Update
         run: |
-          # حالت ران رو تشخیص بده
+          # تشخیص نوع ران
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             REASON="Manual Run"
           else
             REASON="Scheduled Run"
           fi
 
-          # زمان بعدی ارسال
+          # زمان بروزرسانی بعدی
           NEXT_RUN=$(date -d "+30 min" '+%Y-%m-%d %H:%M')
 
-          # ارسال به تلگرام به صورت فایل
+          # ارسال فایل به تلگرام
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TOKEN }}/sendDocument" \
             -F chat_id="${{ secrets.CHAT_ID }}" \
             -F document=@config.txt \
