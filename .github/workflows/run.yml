@@ -1,6 +1,7 @@
 name: Fetch Config
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "*/30 * * * *"
 
