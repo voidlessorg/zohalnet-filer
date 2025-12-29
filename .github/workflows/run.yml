@@ -3,7 +3,7 @@ name: Fetch Xray Config
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/1 * * * *"
 
 jobs:
   fetch:
@@ -21,7 +21,7 @@ jobs:
             MODE="Scheduled ⏰"
           fi
 
-          NEXT_RUN=$(date -d "+225 min" '+%Y-%m-%d %H:%M')
+          NEXT_RUN=$(date -d "+30 min" '+%Y-%m-%d %H:%M')
 
           # ساخت Caption با printf و escape کاراکترهای خاص
           CAPTION=$(printf "📌 *Xray Config Update*\n╔════════════╗\n║ *Mode:* %s\n║ *Next Update:* %s\n╚════════════╝" "$MODE" "$NEXT_RUN")
