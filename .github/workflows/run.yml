@@ -3,7 +3,7 @@ name: Fetch Xray Config
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/1 * * * *"
+    - cron: "*/15 * * * *"   # هر ۱۵ دقیقه
 
 jobs:
   fetch:
@@ -15,17 +15,25 @@ jobs:
 
       - name: Send Config to Telegram
         run: |
+          # تنظیم تایم‌زون ایران
+          export TZ="Asia/Tehran"
+
+          # تشخیص نوع اجرا
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             MODE="Manual 🛠"
           else
-            MODE="Scheduled ⏰"
+            MODE="Auto ⏰"
           fi
 
-          NEXT_RUN=$(date -d "+30 min" '+%Y-%m-%d %H:%M')
+          # زمان‌ها (۱۵ دقیقه‌ای)
+          NOW=$(date '+%Y-%m-%d %H:%M')
+          NEXT_RUN=$(date -d "+15 min" '+%Y-%m-%d %H:%M')
 
-          # ساخت Caption با printf و escape کاراکترهای خاص
-          CAPTION=$(printf "📌 *Xray Config Update*\n╔════════════╗\n║ *Mode:* %s\n║ *Next Update:* %s\n╚════════════╝" "$MODE" "$NEXT_RUN")
+          # کپشن شیک، بولد، ایموجی
+          CAPTION=$(printf "📦 *Xray Config Update*\n━━━━━━━━━━━━━━\n🧭 *Mode:* %s\n🕒 *Sent:* %s (IR)\n⏭ *Next:* %s (IR)\n━━━━━━━━━━━━━━" \
+          "$MODE" "$NOW" "$NEXT_RUN")
 
+          # ارسال فایل به تلگرام
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TOKEN }}/sendDocument" \
             -F chat_id="${{ secrets.CHAT_ID }}" \
             -F document=@config.txt \
