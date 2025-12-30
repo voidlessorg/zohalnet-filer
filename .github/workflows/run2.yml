@@ -12,10 +12,10 @@ jobs:
     steps:
       - name: Merge Xray Configs (Safe)
         run: |
-          : > MCIconfig
+          : > MCIconfig.txt
 
           for URL in "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_2.txt" "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_3.txt" "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_4.txt"; do
-            curl -fsS "$URL" >> MCIconfig || true
+            curl -fsS "$URL" >> MCIconfig.txt || true
           done
 
       - name: Send Config to Telegram
@@ -40,6 +40,6 @@ jobs:
 
           curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
             -F chat_id="${CHAT_ID}" \
-            -F document=@MCIconfig \
+            -F document=@MCIconfig.txt \
             -F caption="$CAPTION" \
             -F parse_mode=Markdown
