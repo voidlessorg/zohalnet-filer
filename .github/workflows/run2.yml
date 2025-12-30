@@ -13,13 +13,13 @@ jobs:
       - name: Download & Merge Xray Configs
         run: |
           echo "### SOURCE 1 ###" > config.txt
-          curl -s "RAW_LINK_1" >> config.txt
+          curl -s "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_2.txt" >> config.txt
 
           echo -e "\n\n### SOURCE 2 ###" >> config.txt
-          curl -s "RAW_LINK_2" >> config.txt
+          curl -s "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_3.txt" >> config.txt
 
           echo -e "\n\n### SOURCE 3 ###" >> config.txt
-          curl -s "RAW_LINK_3" >> config.txt
+          curl -s "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_4.txt" >> config.txt
 
       - name: Send Merged Config to Telegram
         env:
