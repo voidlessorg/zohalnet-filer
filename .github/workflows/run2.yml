@@ -1,4 +1,4 @@
-name: Fetch Xray Config (Merged Clean)
+name: Fetch Xray Config (MCI)
 
 on:
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
           NOW=$(date '+%Y-%m-%d %H:%M')
           NEXT_RUN=$(date -d "+2 hours" '+%Y-%m-%d %H:%M')
 
-          CAPTION=$(printf "📦 *Xray Config Update*\n🧩 *Source: @FreeVPNHomes* \n🧭* Mode: %s*\n🕒 *Sent: %s IR\n⏭ Next: %s IR*" \
+          CAPTION=$(printf "📦 *MCI Config Update*\n🧩 *Source: @FreeVPNHomes* \n🧭* Mode: %s*\n🕒 *Sent: %s IR\n⏭ Next: %s IR*\n2️⃣*Filterfight II*" \
           "$MODE" "$NOW" "$NEXT_RUN")
 
 
