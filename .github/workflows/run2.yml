@@ -1,4 +1,4 @@
-name: Fetch Xray Config (Merged)
+name: Fetch Xray Config (MCI)
 
 on:
   workflow_dispatch:
