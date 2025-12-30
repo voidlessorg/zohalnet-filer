@@ -3,7 +3,7 @@ name: Fetch Xray Config
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/120 * * * *"   # هر ۱۵ دقیقه
+    - cron: "0 */2 * * *"   # هر ۱۵ دقیقه
 
 jobs:
   fetch:
@@ -27,7 +27,7 @@ jobs:
 
           # زمان‌ها (۱۵ دقیقه‌ای)
           NOW=$(date '+%Y-%m-%d %H:%M')
-          NEXT_RUN=$(date -d "+120 min" '+%Y-%m-%d %H:%M')
+          NEXT_RUN=$(date -d "+2 hours" '+%Y-%m-%d %H:%M')
 
           # کپشن شیک، بولد، ایموجی
           CAPTION=$(printf "📦 *Xray Config Update*\n━━━━━━━━━━━━━━\n🧭 *Mode:* %s\n🕒 *Sent:* %s (IR)\n⏭ *Next:* %s (IR)\n 🛢️*Source:* MashaNet\n━━━━━━━━━━━━━━" \
