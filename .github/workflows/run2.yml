@@ -5,19 +5,14 @@ on:
   schedule:
     - cron: "0 */2 * * *"   # هر ۲ ساعت
 
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Merge Xray Configs (Safe)
+      - name: Download Xray Config
         run: |
-          : > MCIconfig.txt
-
-          for URL in "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_2.txt" "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_3.txt" "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_4.txt"; do
-            curl -fsS "$URL" >> MCIconfig.txt || true
-          done
-
+          curl -s "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_2.txt"
       - name: Send Config to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TOKEN }}
