@@ -36,6 +36,6 @@ jobs:
 
           curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
             -F chat_id="${CHAT_ID}" \
-            -F document=@config.txt \
+            -F document=@MCIconfig.txt \
             -F caption="$CAPTION" \
             -F parse_mode=Markdown
