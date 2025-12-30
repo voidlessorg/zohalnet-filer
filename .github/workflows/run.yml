@@ -30,7 +30,7 @@ jobs:
           NEXT_RUN=$(date -d "+15 min" '+%Y-%m-%d %H:%M')
 
           # کپشن شیک، بولد، ایموجی
-          CAPTION=$(printf "📦 *Xray Config Update*\n━━━━━━━━━━━━━━\n🧭 *Mode:* %s\n🕒 *Sent:* %s (IR)\n⏭ *Next:* %s (IR)\n━━━━━━━━━━━━━━" \
+          CAPTION=$(printf "📦 *Xray Config Update*\n━━━━━━━━━━━━━━\n🧭 *Mode:* %s\n🕒 *Sent:* %s (IR)\n⏭ *Next:* %s (IR)\n 🛢️*Source:* MashaNet\n━━━━━━━━━━━━━━" \
           "$MODE" "$NOW" "$NEXT_RUN")
 
           # ارسال فایل به تلگرام
