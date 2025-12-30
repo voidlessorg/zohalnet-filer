@@ -15,7 +15,6 @@ jobs:
           curl -s "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_2.txt" >> config.txt
           curl -s "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_3.txt" >> config.txt
           curl -s "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/main/mci/sub_4.txt" >> config.txt
-
       - name: Send Merged Config to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TOKEN }}
