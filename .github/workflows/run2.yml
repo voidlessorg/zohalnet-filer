@@ -1,0 +1,47 @@
+name: Fetch Xray Config (Merged)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */2 * * *"   # هر ۲ ساعت
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download & Merge Xray Configs
+        run: |
+          echo "### SOURCE 1 ###" > config.txt
+          curl -s "RAW_LINK_1" >> config.txt
+
+          echo -e "\n\n### SOURCE 2 ###" >> config.txt
+          curl -s "RAW_LINK_2" >> config.txt
+
+          echo -e "\n\n### SOURCE 3 ###" >> config.txt
+          curl -s "RAW_LINK_3" >> config.txt
+
+      - name: Send Merged Config to Telegram
+        env:
+          BOT_TOKEN: ${{ secrets.TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          export TZ="Asia/Tehran"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MODE="Manual 🛠"
+          else
+            MODE="Auto ⏰"
+          fi
+
+          NOW=$(date '+%Y-%m-%d %H:%M')
+          NEXT_RUN=$(date -d "+2 hours" '+%Y-%m-%d %H:%M')
+
+          CAPTION=$(printf "📦 *MCI Xray Config Update*\n━━━━━━━━━━━━━━\n🧩 *Source:* @FreeVPNHomes\n🧭 *Mode:* %s\n🕒 *Sent:* %s (IR)\n⏭ *Next:* %s (IR)\n━━━━━━━━━━━━━━" \
+          "$MODE" "$NOW" "$NEXT_RUN")
+
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+            -F chat_id="${CHAT_ID}" \
+            -F document=@config.txt \
+            -F caption="$CAPTION" \
+            -F parse_mode=Markdown
