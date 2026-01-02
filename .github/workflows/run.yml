@@ -13,7 +13,7 @@ jobs:
       - name: Restore last hash
         uses: actions/cache@v4
         with:
-          path: last_hash.txt
+          path: last_hash1.txt
           key: xray-config-hash
 
       - name: Download config & compare
@@ -25,8 +25,8 @@ jobs:
 
           NEW_HASH=$(sha256sum new_config.txt | awk '{print $1}')
           OLD_HASH=""
-          if [ -f last_hash.txt ]; then
-            OLD_HASH=$(cat last_hash.txt)
+          if [ -f last_hash1.txt ]; then
+            OLD_HASH=$(cat last_hash1.txt)
           fi
 
           if [ "$NEW_HASH" = "$OLD_HASH" ]; then
@@ -46,18 +46,18 @@ jobs:
           MONTH_NUM=$(date '+%m')
 
           case "$MONTH_NUM" in
-            01) MONTH="farvardin" ;;
-            02) MONTH="ordibehesht" ;;
-            03) MONTH="khordad" ;;
-            04) MONTH="tir" ;;
-            05) MONTH="mordad" ;;
-            06) MONTH="shahrivar" ;;
-            07) MONTH="mehr" ;;
-            08) MONTH="aban" ;;
-            09) MONTH="azar" ;;
-            10) MONTH="dey" ;;
-            11) MONTH="bahman" ;;
-            12) MONTH="esfand" ;;
+            01) MONTH="January" ;;
+            02) MONTH="February" ;;
+            03) MONTH="March" ;;
+            04) MONTH="April" ;;
+            05) MONTH="May" ;;
+            06) MONTH="June" ;;
+            07) MONTH="July" ;;
+            08) MONTH="August" ;;
+            09) MONTH="September" ;;
+            10) MONTH="October" ;;
+            11) MONTH="November" ;;
+            12) MONTH="December" ;;
           esac
 
           CONFIG_NAME="MAHSANET"
