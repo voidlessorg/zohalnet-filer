@@ -60,7 +60,7 @@ jobs:
             12) MONTH="Dec" ;;
           esac
 
-          CONFIG_NAME="mci"
+          CONFIG_NAME="MAHSANET"
           FILENAME="${HOUR}:00 - ${DAY} - ${MONTH} - ${CONFIG_NAME}"
 
           mv new_config.txt "$FILENAME"
