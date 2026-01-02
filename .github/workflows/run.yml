@@ -13,7 +13,7 @@ jobs:
       - name: Restore state
         uses: actions/cache@v4
         with:
-          path: CONFIG_HASH_CACCHE.txt
+          path: CONFIG_HASH_CACHE.txt
           key: smart-config-hash
 
       - name: Download config
@@ -23,9 +23,9 @@ jobs:
       - name: Compute hash & prepare chunks
         run: |
           NEW_HASH=$(sha256sum config.txt | awk '{print $1}')
-          if [ -f CONFIG_HASH_CACCHE.txt ]; then
-            OLD_HASH=$(head -1 CONFIG_HASH_CACCHE.txt)
-            LAST_SENT=$(tail -1 CONFIG_HASH_CACCHE.txt | cut -d'/' -f1)
+          if [ -f CONFIG_HASH_CACHE.txt ]; then
+            OLD_HASH=$(head -1 CONFIG_HASH_CACHE.txt)
+            LAST_SENT=$(tail -1 CONFIG_HASH_CACHE.txt | cut -d'/' -f1)
           else
             OLD_HASH=""
             LAST_SENT=0
@@ -33,7 +33,6 @@ jobs:
 
           # اگر کانفیگ تغییر کرد، دوباره chunk بساز
           if [ "$NEW_HASH" != "$OLD_HASH" ]; then
-            # پاک کردن chunkهای قبلی
             rm -f chunk_*
             split -b 3900 config.txt chunk_
             TOTAL=$(ls chunk_* | wc -l)
@@ -70,7 +69,5 @@ jobs:
       - name: Save hash state
         uses: actions/cache@v4
         with:
-          path: CONFIG_HASH_CACHE.txt
-          key: smart-config-hash        with:
           path: CONFIG_HASH_CACHE.txt
           key: smart-config-hash
