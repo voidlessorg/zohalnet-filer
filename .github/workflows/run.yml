@@ -1,73 +1,91 @@
-name: Smart VPN Config Sender (Timed Chunks)
+name: Xray Config (Send Only On Change)
 
 on:
-  schedule:
-    - cron: "*/30 * * * *"  # هر نیم ساعت
   workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"   # هر ۱ ساعت
 
 jobs:
-  send-chunk:
+  fetch:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Restore state
+      - name: Restore last hash
         uses: actions/cache@v4
         with:
-          path: CONFIG_HASH_CACHE.txt
-          key: smart-config-hash
+          path: last_hash.txt
+          key: xray-config-hash
 
-      - name: Download config
+      - name: Download config & compare
         run: |
-          curl -fsS "https://raw.githubusercontent.com/MahsaNetConfigTopic/config/refs/heads/main/xray_final.txt" -o config.txt
+          set -e
+          export TZ=Asia/Tehran
 
-      - name: Compute hash & prepare chunks
-        run: |
-          NEW_HASH=$(sha256sum config.txt | awk '{print $1}')
-          if [ -f CONFIG_HASH_CACHE.txt ]; then
-            OLD_HASH=$(head -1 CONFIG_HASH_CACHE.txt)
-            LAST_SENT=$(tail -1 CONFIG_HASH_CACHE.txt | cut -d'/' -f1)
-          else
-            OLD_HASH=""
-            LAST_SENT=0
+          curl -fsS "https://raw.githubusercontent.com/MahsaNetConfigTopic/config/refs/heads/main/xray_final.txt" -o new_config.txt
+
+          NEW_HASH=$(sha256sum new_config.txt | awk '{print $1}')
+          OLD_HASH=""
+          if [ -f last_hash.txt ]; then
+            OLD_HASH=$(cat last_hash.txt)
           fi
 
-          # اگر کانفیگ تغییر کرد، دوباره chunk بساز
-          if [ "$NEW_HASH" != "$OLD_HASH" ]; then
-            rm -f chunk_*
-            split -b 3900 config.txt chunk_
-            TOTAL=$(ls chunk_* | wc -l)
-            echo "$NEW_HASH" > CONFIG_HASH_CACHE.txt
-            echo "0/$TOTAL" >> CONFIG_HASH_CACHE.txt
+          if [ "$NEW_HASH" = "$OLD_HASH" ]; then
+            echo "NO_CHANGE=true" >> $GITHUB_ENV
           else
-            TOTAL=$(tail -1 CONFIG_HASH_CACHE.txt | cut -d'/' -f2)
+            echo "$NEW_HASH" > last_hash.txt
+            echo "NO_CHANGE=false" >> $GITHUB_ENV
           fi
 
-      - name: Send next chunk
+      - name: Build filename
+        if: env.NO_CHANGE == 'false'
+        run: |
+          export TZ=Asia/Tehran
+
+          HOUR=$(date '+%H')
+          DAY=$(date '+%d')
+          MONTH_NUM=$(date '+%m')
+
+          case "$MONTH_NUM" in
+            01) MONTH="Jan" ;;
+            02) MONTH="Feb" ;;
+            03) MONTH="Mar" ;;
+            04) MONTH="April" ;;
+            05) MONTH="May" ;;
+            06) MONTH="June" ;;
+            07) MONTH="Jul" ;;
+            08) MONTH="Aug" ;;
+            09) MONTH="Sep" ;;
+            10) MONTH="Oct" ;;
+            11) MONTH="Nov" ;;
+            12) MONTH="Dec" ;;
+          esac
+
+          CONFIG_NAME="mci"
+          FILENAME="${HOUR}:00 - ${DAY} - ${MONTH} - ${CONFIG_NAME}"
+
+          mv new_config.txt "$FILENAME"
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      - name: Send to Telegram
+        if: env.NO_CHANGE == 'false'
         env:
           BOT_TOKEN: ${{ secrets.TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
-          LAST_SENT=$(tail -1 CONFIG_HASH_CACHE.txt | cut -d'/' -f1)
-          TOTAL=$(tail -1 CONFIG_HASH_CACHE.txt | cut -d'/' -f2)
-          NEXT=$((LAST_SENT+1))
+          export TZ=Asia/Tehran
+          NOW=$(date '+%Y-%m-%d %H:%M')
 
-          if [ "$NEXT" -le "$TOTAL" ]; then
-            CHUNK_FILE=$(ls chunk_* | sed -n "${NEXT}p")
-            HEADER="<b>📦 VPN Config Update</b>\n🕒 $(date '+%H:%M %d-%b')\nChunk ${NEXT}/${TOTAL}\n━━━━━━━━━━━━━"
-            MESSAGE="${HEADER}<pre>$(cat $CHUNK_FILE)</pre>"
+          CAPTION=$(printf "📦 *Xray Config Updated*\n🕒 %s IR" "$NOW")
 
-            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-              --data-urlencode "chat_id=${CHAT_ID}" \
-              --data-urlencode "text=${MESSAGE}" \
-              --data-urlencode "parse_mode=HTML"
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+            -F chat_id="${CHAT_ID}" \
+            -F document=@"$FILENAME" \
+            -F caption="$CAPTION" \
+            -F parse_mode=Markdown
 
-            # Update last sent
-            sed -i "\$d" CONFIG_HASH_CACHE.txt
-            echo "${NEXT}/${TOTAL}" >> CONFIG_HASH_CACHE.txt
-          fi
-
-      - name: Save hash state
+      - name: Save hash
+        if: env.NO_CHANGE == 'false'
         uses: actions/cache@v4
         with:
-          path: CONFIG_HASH_CACHE.txt
-          key: smart-config-hash
+          path: last_hash.txt
+          key: xray-config-hash
