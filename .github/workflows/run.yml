@@ -1,41 +1,91 @@
-name: Fetch Xray Config
+name: Xray Config (Send Only On Change)
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */2 * * *"   # هر ۱۵ دقیقه
+    - cron: "0 * * * *"   # هر ۱ ساعت
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Download Xray Config
-        run: |
-          curl -s "https://raw.githubusercontent.com/MahsaNetConfigTopic/config/refs/heads/main/xray_final.txt" -o config.txt
+      - name: Restore last hash
+        uses: actions/cache@v4
+        with:
+          path: last_hash.txt
+          key: xray-config-hash
 
-      - name: Send Config to Telegram
+      - name: Download config & compare
         run: |
-          # تنظیم تایم‌زون ایران
-          export TZ="Asia/Tehran"
+          set -e
+          export TZ=Asia/Tehran
 
-          # تشخیص نوع اجرا
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            MODE="Manual 🛠"
-          else
-            MODE="Auto ⏰"
+          curl -fsS "https://raw.githubusercontent.com/MahsaNetConfigTopic/config/refs/heads/main/xray_final.txt" -o new_config.txt
+
+          NEW_HASH=$(sha256sum new_config.txt | awk '{print $1}')
+          OLD_HASH=""
+          if [ -f last_hash.txt ]; then
+            OLD_HASH=$(cat last_hash.txt)
           fi
 
-          # زمان‌ها (۱۵ دقیقه‌ای)
+          if [ "$NEW_HASH" = "$OLD_HASH" ]; then
+            echo "NO_CHANGE=true" >> $GITHUB_ENV
+          else
+            echo "$NEW_HASH" > last_hash.txt
+            echo "NO_CHANGE=false" >> $GITHUB_ENV
+          fi
+
+      - name: Build filename
+        if: env.NO_CHANGE == 'false'
+        run: |
+          export TZ=Asia/Tehran
+
+          HOUR=$(date '+%H')
+          DAY=$(date '+%d')
+          MONTH_NUM=$(date '+%m')
+
+          case "$MONTH_NUM" in
+            01) MONTH="farvardin" ;;
+            02) MONTH="ordibehesht" ;;
+            03) MONTH="khordad" ;;
+            04) MONTH="tir" ;;
+            05) MONTH="mordad" ;;
+            06) MONTH="shahrivar" ;;
+            07) MONTH="mehr" ;;
+            08) MONTH="aban" ;;
+            09) MONTH="azar" ;;
+            10) MONTH="dey" ;;
+            11) MONTH="bahman" ;;
+            12) MONTH="esfand" ;;
+          esac
+
+          CONFIG_NAME="MAHSANET"
+          FILENAME="${HOUR}:00 - ${DAY} - ${MONTH} - ${CONFIG_NAME}"
+
+          mv new_config.txt "$FILENAME"
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      - name: Send to Telegram
+        if: env.NO_CHANGE == 'false'
+        env:
+          BOT_TOKEN: ${{ secrets.TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          export TZ=Asia/Tehran
           NOW=$(date '+%Y-%m-%d %H:%M')
-          NEXT_RUN=$(date -d "+2 hours" '+%Y-%m-%d %H:%M')
 
-          # کپشن شیک، بولد، ایموجی
-          CAPTION=$(printf "📦 *Xray Config Update*\n━━━━━━━━━━━━━━\n🧭 *Mode:* %s\n🕒 *Sent:* %s (IR)\n⏭ *Next:* %s (IR)\n 🛢️*Source:* MashaNet\n━━━━━━━━━━━━━━" \
-          "$MODE" "$NOW" "$NEXT_RUN")
+          CAPTION=$(printf "📦 *Xray Config Updated*\n🕒 %s IR" "$NOW")
 
-          # ارسال فایل به تلگرام
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TOKEN }}/sendDocument" \
-            -F chat_id="${{ secrets.CHAT_ID }}" \
-            -F document=@config.txt \
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+            -F chat_id="${CHAT_ID}" \
+            -F document=@"$FILENAME" \
             -F caption="$CAPTION" \
-            -F parse_mode="Markdown"
+            -F parse_mode=Markdown
+
+      - name: Save hash
+        if: env.NO_CHANGE == 'false'
+        uses: actions/cache@v4
+        with:
+          path: last_hash.txt
+          key: xray-config-hash
