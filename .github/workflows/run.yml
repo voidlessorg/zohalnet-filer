@@ -1,112 +1,76 @@
-name: Smart VPN Config Sender (HTML Mode fixed)
+name: Smart VPN Config Sender (Timed Chunks)
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"   # هر ۱ ساعت
+    - cron: "*/30 * * * *"  # هر نیم ساعت
+  workflow_dispatch:
 
 jobs:
-  send-config:
+  send-chunk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Restore last hash
+      - name: Restore state
         uses: actions/cache@v4
         with:
-          path: CONFIG_HASSH_CACHE.txt
+          path: CONFIG_HASH_CACCHE.txt
           key: smart-config-hash
 
       - name: Download config
         run: |
           curl -fsS "https://raw.githubusercontent.com/MahsaNetConfigTopic/config/refs/heads/main/xray_final.txt" -o config.txt
 
-      - name: Compute hash & compare
+      - name: Compute hash & prepare chunks
         run: |
           NEW_HASH=$(sha256sum config.txt | awk '{print $1}')
-          OLD_HASH=""
-          if [ -f CONFIG_HASSH_CACHE.txt ]; then
-            OLD_HASH=$(cat CONFIG_HASH_CACHE.txt)
-          fi
-
-          if [ "$NEW_HASH" = "$OLD_HASH" ]; then
-            echo "NO_CHANGE=true" >> $GITHUB_ENV
+          if [ -f CONFIG_HASH_CACCHE.txt ]; then
+            OLD_HASH=$(head -1 CONFIG_HASH_CACCHE.txt)
+            LAST_SENT=$(tail -1 CONFIG_HASH_CACCHE.txt | cut -d'/' -f1)
           else
-            echo "$NEW_HASH" > CONFIG_HASH_CACHE.txt
-            echo "NO_CHANGE=false" >> $GITHUB_ENV
+            OLD_HASH=""
+            LAST_SENT=0
           fi
 
-      - name: Build filename with Gregorian month
-        if: env.NO_CHANGE == 'false'
-        run: |
-          HOUR=$(date '+%H')
-          DAY=$(date '+%d')
-          MONTH_NUM=$(date '+%m')
-          case "$MONTH_NUM" in
-            01) MONTH="Jan" ;;
-            02) MONTH="Feb" ;;
-            03) MONTH="Mar" ;;
-            04) MONTH="Apr" ;;
-            05) MONTH="May" ;;
-            06) MONTH="Jun" ;;
-            07) MONTH="Jul" ;;
-            08) MONTH="Aug" ;;
-            09) MONTH="Sep" ;;
-            10) MONTH="Oct" ;;
-            11) MONTH="Nov" ;;
-            12) MONTH="Dec" ;;
-          esac
-          FILENAME="${HOUR}:00 - ${DAY} - ${MONTH} - smart-config.txt"
-          mv config.txt "$FILENAME"
-          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+          # اگر کانفیگ تغییر کرد، دوباره chunk بساز
+          if [ "$NEW_HASH" != "$OLD_HASH" ]; then
+            # پاک کردن chunkهای قبلی
+            rm -f chunk_*
+            split -b 3900 config.txt chunk_
+            TOTAL=$(ls chunk_* | wc -l)
+            echo "$NEW_HASH" > CONFIG_HASH_CACHE.txt
+            echo "0/$TOTAL" >> CONFIG_HASH_CACHE.txt
+          else
+            TOTAL=$(tail -1 CONFIG_HASH_CACHE.txt | cut -d'/' -f2)
+          fi
 
-      - name: Send config in chunks (HTML safe)
-        if: env.NO_CHANGE == 'false'
+      - name: Send next chunk
         env:
           BOT_TOKEN: ${{ secrets.TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
-          #!/bin/bash
-          set -euo pipefail
+          LAST_SENT=$(tail -1 CONFIG_HASH_CACHE.txt | cut -d'/' -f1)
+          TOTAL=$(tail -1 CONFIG_HASH_CACHE.txt | cut -d'/' -f2)
+          NEXT=$((LAST_SENT+1))
 
-          MAX_CHARS=3800
-          FILE="$FILENAME"
-          CONTENT=$(cat "$FILE")
-          BUFFER=""
+          if [ "$NEXT" -le "$TOTAL" ]; then
+            CHUNK_FILE=$(ls chunk_* | sed -n "${NEXT}p")
+            HEADER="<b>📦 VPN Config Update</b>\n🕒 $(date '+%H:%M %d-%b')\nChunk ${NEXT}/${TOTAL}\n━━━━━━━━━━━━━"
+            MESSAGE="${HEADER}<pre>$(cat $CHUNK_FILE)</pre>"
 
-          send_chunk() {
-            CHUNK="$1"
-            # header: از <br> استفاده نمیشه، از \n برای خط جدید
-            HEADER="<b>📦 VPN Config Update</b>\n🕒 $(date '+%H:%M %d-%b')\n━━━━━━━━━━━━━"
-            # کانفیگ داخل pre تا تلگرام متن رو خام بگیره
-            MESSAGE="${HEADER}<pre>${CHUNK}</pre>"
-
-            # استفاده از --data-urlencode برای امن بودن متن
             curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
               --data-urlencode "chat_id=${CHAT_ID}" \
               --data-urlencode "text=${MESSAGE}" \
               --data-urlencode "parse_mode=HTML"
-          }
 
-          # بخش‌بندی محتوا خط به خط به طوری که کانفیگ ها نصف نشن
-          while IFS= read -r line || [ -n "$line" ]; do
-            # اندازه بعد از اضافه شدن این خط چک میشه
-            NEW_LEN=$(( ${#BUFFER} + ${#line} + 1 ))
-            if [ "$NEW_LEN" -gt "$MAX_CHARS" ]; then
-              # ارسال buffer فعلی
-              send_chunk "$BUFFER"
-              BUFFER=""
-            fi
-            BUFFER+="$line"$'\n'
-          done <<< "$CONTENT"
-
-          # ارسال باقی‌مانده
-          if [ -n "$BUFFER" ]; then
-            send_chunk "$BUFFER"
+            # Update last sent
+            sed -i "\$d" CONFIG_HASH_CACHE.txt
+            echo "${NEXT}/${TOTAL}" >> CONFIG_HASH_CACHE.txt
           fi
 
-      - name: Save hash
-        if: env.NO_CHANGE == 'false'
+      - name: Save hash state
         uses: actions/cache@v4
         with:
+          path: CONFIG_HASH_CACHE.txt
+          key: smart-config-hash        with:
           path: CONFIG_HASH_CACHE.txt
           key: smart-config-hash
