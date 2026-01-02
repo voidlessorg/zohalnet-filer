@@ -1,4 +1,4 @@
-name: Smart VPN Config Sender (HTML Mode)
+name: Smart VPN Config Sender (HTML Mode fixed)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ jobs:
       - name: Restore last hash
         uses: actions/cache@v4
         with:
-          path: CONFIIG_HASH_CACHE.txt
+          path: CONFIG_HASSH_CACHE.txt
           key: smart-config-hash
 
       - name: Download config
@@ -24,7 +24,7 @@ jobs:
         run: |
           NEW_HASH=$(sha256sum config.txt | awk '{print $1}')
           OLD_HASH=""
-          if [ -f CONFIIG_HASH_CACHE.txt ]; then
+          if [ -f CONFIG_HASSH_CACHE.txt ]; then
             OLD_HASH=$(cat CONFIG_HASH_CACHE.txt)
           fi
 
@@ -62,35 +62,45 @@ jobs:
       - name: Send config in chunks (HTML safe)
         if: env.NO_CHANGE == 'false'
         env:
-          Bot_token: ${{ secrets.TOKEN }}
+          BOT_TOKEN: ${{ secrets.TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
           #!/bin/bash
-          MAX_CHARS=3500
+          set -euo pipefail
+
+          MAX_CHARS=3800
           FILE="$FILENAME"
           CONTENT=$(cat "$FILE")
           BUFFER=""
 
           send_chunk() {
             CHUNK="$1"
-            HEADER="<b>📦 VPN Config Update</b><br>🕒 $(date '+%H:%M %d-%b')<br>━━━━━━━━━━━━━"
+            # header: از <br> استفاده نمیشه، از \n برای خط جدید
+            HEADER="<b>📦 VPN Config Update</b>\n🕒 $(date '+%H:%M %d-%b')\n━━━━━━━━━━━━━"
+            # کانفیگ داخل pre تا تلگرام متن رو خام بگیره
             MESSAGE="${HEADER}<pre>${CHUNK}</pre>"
 
-            curl -s -X POST "https://api.telegram.org/bot${Bot_token}/sendMessage" \
-                 -d chat_id="${CHAT_ID}" \
-                 -d text="$MESSAGE" \
-                 -d parse_mode="HTML"
+            # استفاده از --data-urlencode برای امن بودن متن
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${CHAT_ID}" \
+              --data-urlencode "text=${MESSAGE}" \
+              --data-urlencode "parse_mode=HTML"
           }
 
-          while IFS= read -r line; do
-            if [ $(( ${#BUFFER} + ${#line} + 1 )) -gt $MAX_CHARS ]; then
+          # بخش‌بندی محتوا خط به خط به طوری که کانفیگ ها نصف نشن
+          while IFS= read -r line || [ -n "$line" ]; do
+            # اندازه بعد از اضافه شدن این خط چک میشه
+            NEW_LEN=$(( ${#BUFFER} + ${#line} + 1 ))
+            if [ "$NEW_LEN" -gt "$MAX_CHARS" ]; then
+              # ارسال buffer فعلی
               send_chunk "$BUFFER"
               BUFFER=""
             fi
             BUFFER+="$line"$'\n'
           done <<< "$CONTENT"
 
-          if [ ! -z "$BUFFER" ]; then
+          # ارسال باقی‌مانده
+          if [ -n "$BUFFER" ]; then
             send_chunk "$BUFFER"
           fi
 
