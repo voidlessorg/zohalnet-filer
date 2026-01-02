@@ -1,4 +1,4 @@
-name: Smart VPN Config Sender
+name: Smart VPN Config Sender (HTML Mode)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ jobs:
       - name: Restore last hash
         uses: actions/cache@v4
         with:
-          path: CONFIG_HASH_CACHE.txt
+          path: CONFIIG_HASH_CACHE.txt
           key: smart-config-hash
 
       - name: Download config
@@ -24,7 +24,7 @@ jobs:
         run: |
           NEW_HASH=$(sha256sum config.txt | awk '{print $1}')
           OLD_HASH=""
-          if [ -f CONFIG_HASH_CACHE.txt ]; then
+          if [ -f CONFIIG_HASH_CACHE.txt ]; then
             OLD_HASH=$(cat CONFIG_HASH_CACHE.txt)
           fi
 
@@ -59,7 +59,7 @@ jobs:
           mv config.txt "$FILENAME"
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV
 
-      - name: Send config in chunks securely
+      - name: Send config in chunks (HTML safe)
         if: env.NO_CHANGE == 'false'
         env:
           Bot_token: ${{ secrets.TOKEN }}
@@ -73,13 +73,13 @@ jobs:
 
           send_chunk() {
             CHUNK="$1"
-            HEADER="📦 *VPN Config Update*\n🕒 $(date '+%H:%M %d-%b')\n━━━━━━━━━━━━━"
-            MESSAGE="${HEADER}\n\`\`\`\n${CHUNK}\n\`\`\`"
+            HEADER="<b>📦 VPN Config Update</b><br>🕒 $(date '+%H:%M %d-%b')<br>━━━━━━━━━━━━━"
+            MESSAGE="${HEADER}<pre>${CHUNK}</pre>"
 
             curl -s -X POST "https://api.telegram.org/bot${Bot_token}/sendMessage" \
                  -d chat_id="${CHAT_ID}" \
                  -d text="$MESSAGE" \
-                 -d parse_mode="MarkdownV2"
+                 -d parse_mode="HTML"
           }
 
           while IFS= read -r line; do
