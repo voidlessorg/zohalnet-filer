@@ -1,4 +1,4 @@
-name: Send Xray/VPN Configs Smart
+name: Smart VPN Config Sender
 
 on:
   workflow_dispatch:
@@ -13,33 +13,31 @@ jobs:
       - name: Restore last hash
         uses: actions/cache@v4
         with:
-          path: last_hash2.txt
+          path: CONFIG_HASH_CACHE.txt
           key: smart-config-hash
 
       - name: Download config
         run: |
-          export TZ=Asia/Tehran
           curl -fsS "https://raw.githubusercontent.com/MahsaNetConfigTopic/config/refs/heads/main/xray_final.txt" -o config.txt
 
       - name: Compute hash & compare
         run: |
           NEW_HASH=$(sha256sum config.txt | awk '{print $1}')
           OLD_HASH=""
-          if [ -f last_hash2.txt ]; then
-            OLD_HASH=$(cat last_hash.txt)
+          if [ -f CONFIG_HASH_CACHE.txt ]; then
+            OLD_HASH=$(cat CONFIG_HASH_CACHE.txt)
           fi
 
           if [ "$NEW_HASH" = "$OLD_HASH" ]; then
             echo "NO_CHANGE=true" >> $GITHUB_ENV
           else
-            echo "$NEW_HASH" > last_hash.txt
+            echo "$NEW_HASH" > CONFIG_HASH_CACHE.txt
             echo "NO_CHANGE=false" >> $GITHUB_ENV
           fi
 
       - name: Build filename with Gregorian month
         if: env.NO_CHANGE == 'false'
         run: |
-          export TZ=Asia/Tehran
           HOUR=$(date '+%H')
           DAY=$(date '+%d')
           MONTH_NUM=$(date '+%m')
@@ -61,60 +59,37 @@ jobs:
           mv config.txt "$FILENAME"
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV
 
-      - name: Send config in chunks to Telegram
+      - name: Send config in chunks securely
         if: env.NO_CHANGE == 'false'
         env:
-          BOT_TOKEN: ${{ secrets.TOKEN }}
+          Bot_token: ${{ secrets.TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
           #!/bin/bash
+          MAX_CHARS=3500
           FILE="$FILENAME"
-          MAX_CHARS=3500  # کمتر از 4096 برای سربرگ و کد بلاک
-          LINE_NUM=0
-
-          # کل محتوا
           CONTENT=$(cat "$FILE")
+          BUFFER=""
 
-          # تابع برای ارسال یک پیام
           send_chunk() {
             CHUNK="$1"
-            HOUR=$(date '+%H')
-            DAY=$(date '+%d')
-            MONTH_NUM=$(date '+%m')
-            case "$MONTH_NUM" in
-              01) MONTH="Jan" ;;
-              02) MONTH="Feb" ;;
-              03) MONTH="Mar" ;;
-              04) MONTH="Apr" ;;
-              05) MONTH="May" ;;
-              06) MONTH="Jun" ;;
-              07) MONTH="Jul" ;;
-              08) MONTH="Aug" ;;
-              09) MONTH="Sep" ;;
-              10) MONTH="Oct" ;;
-              11) MONTH="Nov" ;;
-              12) MONTH="Dec" ;;
-            esac
-            HEADER="📦 *VPN Config Update*\n🕒 ${HOUR}:00 ${DAY}-${MONTH}\n━━━━━━━━━━━━━"
+            HEADER="📦 *VPN Config Update*\n🕒 $(date '+%H:%M %d-%b')\n━━━━━━━━━━━━━"
             MESSAGE="${HEADER}\n\`\`\`\n${CHUNK}\n\`\`\`"
-            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+
+            curl -s -X POST "https://api.telegram.org/bot${Bot_token}/sendMessage" \
                  -d chat_id="${CHAT_ID}" \
                  -d text="$MESSAGE" \
-                 -d parse_mode="Markdown"
+                 -d parse_mode="MarkdownV2"
           }
 
-          # بخش‌بندی محتوا بدون نصف شدن کانفیگ
-          BUFFER=""
           while IFS= read -r line; do
-            # اگر اندازه با خط جدید بیشتر از MAX_CHARS شد → ارسال کن
-            if [ ${#BUFFER} -gt $MAX_CHARS ]; then
+            if [ $(( ${#BUFFER} + ${#line} + 1 )) -gt $MAX_CHARS ]; then
               send_chunk "$BUFFER"
               BUFFER=""
             fi
             BUFFER+="$line"$'\n'
           done <<< "$CONTENT"
 
-          # ارسال باقی‌مانده
           if [ ! -z "$BUFFER" ]; then
             send_chunk "$BUFFER"
           fi
@@ -123,5 +98,5 @@ jobs:
         if: env.NO_CHANGE == 'false'
         uses: actions/cache@v4
         with:
-          path: last_hash.txt
+          path: CONFIG_HASH_CACHE.txt
           key: smart-config-hash
